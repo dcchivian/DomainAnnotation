@@ -25,7 +25,6 @@ import us.kbase.common.service.Tuple5;
 import us.kbase.common.utils.AlignUtil;
 import us.kbase.common.utils.CorrectProcess;
 import us.kbase.common.utils.RpsBlastParser;
-import us.kbase.common.taskqueue.TaskQueueConfig;
 import us.kbase.kbasegenomes.Feature;
 import us.kbase.kbasegenomes.Genome;
 import us.kbase.workspace.ObjectData;
@@ -206,13 +205,18 @@ public class DomainAnnotationImpl {
 
         WorkspaceClient wc = createWsClient(wsURL,token);
 
-        // turn local into absolute paths
         String genomeRef = input.getGenomeRef();
-        if (genomeRef.indexOf("/") == -1)
-            genomeRef = input.getWs()+"/"+genomeRef;
         String domainModelSetRef = input.getDmsRef();
-        if (domainModelSetRef.indexOf("/") == -1)
-            domainModelSetRef = input.getWs()+"/"+domainModelSetRef;
+
+        // check that all inputs are OK
+        if (genomeRef==null)
+            throw new IllegalArgumentException("searchDomains:  genome reference cannot be null");
+        if (domainModelSetRef==null)
+            throw new IllegalArgumentException("searchDomains:  domain model set reference cannot be null");
+        if (input.getWs()==null)
+            throw new IllegalArgumentException("searchDomains:  input workspace cannot be null");
+        if (input.getOutputResultId()==null)
+            throw new IllegalArgumentException("searchDomains:  output result name cannot be null");
         
         // for provenance
         String methodName = "DomainAnnotation.search_domains";
@@ -259,6 +263,7 @@ public class DomainAnnotationImpl {
                         .withDescription("Domain Annotations"));
         }
         catch (Exception e) {
+            System.err.println("ERROR: "+e.getMessage());
             reportText += "\n\nERROR: "+e.getMessage();
             warnings = new ArrayList<String>();
             warnings.add("ERROR: "+e.getMessage());
@@ -296,11 +301,7 @@ public class DomainAnnotationImpl {
 
         // turn local into absolute paths
         String genomeAnnotationRef = input.getGenomeAnnotationRef();
-        if (genomeAnnotationRef.indexOf("/") == -1)
-            genomeAnnotationRef = input.getWs()+"/"+genomeAnnotationRef;
         String domainModelSetRef = input.getDmsRef();
-        if (domainModelSetRef.indexOf("/") == -1)
-            domainModelSetRef = input.getWs()+"/"+domainModelSetRef;
         
         // for provenance
         String methodName = "DomainAnnotation.search_domains_ga";
@@ -709,7 +710,7 @@ public class DomainAnnotationImpl {
         return ret;
     }
 
-    private static File getDomainsDir() {
+    public static File getDomainsDir() {
         File ret = new File(tempDir, "domains");
         if (!ret.exists())
             ret.mkdir();

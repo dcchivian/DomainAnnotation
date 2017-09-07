@@ -41,7 +41,7 @@ public class DomainAnnotationServerTest {
     
     @BeforeClass
     public static void init() throws Exception {
-        token = new AuthToken(System.getenv("KB_AUTH_TOKEN"));
+        token = new AuthToken(System.getenv("KB_AUTH_TOKEN"), "<unknown>");
         String configFilePath = System.getenv("KB_DEPLOYMENT_CONFIG");
         File deploy = new File(configFilePath);
         Ini ini = new Ini(deploy);
@@ -74,9 +74,9 @@ public class DomainAnnotationServerTest {
 
     /**
        Check that we can get all the All Libraries DomainModelSet from the
-       public workspace.
+       public workspace, WITHOUT logging in
     */
-    @Test
+    // @Test
     public void checkDMS() throws Exception {
         DomainModelSet dms = wsClient.getObjects(Arrays.asList(new ObjectIdentity().withRef(allLibsRef))).get(0).getData().asClassInstance(DomainModelSet.class);
 
@@ -85,16 +85,21 @@ public class DomainAnnotationServerTest {
         for (String id : domainLibMap.values()) {
             DomainLibrary dl = wsClient.getObjects(Arrays.asList(new ObjectIdentity().withRef(id))).get(0).getData().asClassInstance(DomainLibrary.class);
             System.out.println("Testing shock files for "+dl.getSource()+" "+dl.getVersion());
-            DomainAnnotationImpl.prepareLibraryFiles(dl,
-                                                     shockURL,
-                                                     token);
+            File dir = DomainAnnotationImpl.getDomainsDir();
+            for (Handle h : dl.getLibraryFiles()) {
+                File f = new File(dir.getPath()+"/"+h.getFileName());
+                if (f.canRead())
+                    f.delete(); // to be sure we get new ones
+                System.out.println("getting shock id "+h.getShockId());
+                DomainAnnotationImpl.fromShock(h, shockURL, null, f, false);
+            }
         }
     }
 
     /**
        Check that we can read E coli genome
-    */
     @Test
+    */
     public void getEColi() throws Exception {
         Genome genome = null;
 
@@ -142,8 +147,8 @@ public class DomainAnnotationServerTest {
     /**
        Check that we can annotate E. coli with SMART.  This is
        fairly fast.
-    */
     @Test
+    */
     public void searchEColiGAPSSM() throws Exception {
         SearchDomainsGAInput input = new SearchDomainsGAInput()
             .withGenomeAnnotationRef(ecoliGARef)
